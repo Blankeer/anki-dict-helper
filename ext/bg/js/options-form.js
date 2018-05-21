@@ -44,6 +44,7 @@ function modelIdToMarkers(id) {
             'glossary',
             'g-list',
             'sentence',
+            'sentence-translate',
             'cloze',
             'url',
             'audio'

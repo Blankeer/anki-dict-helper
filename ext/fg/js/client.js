@@ -45,15 +45,15 @@ class Client {
         }
     }
 
-    
+
     onMouseMove(e) {
         this.lastMousePos = {x: e.clientX, y: e.clientY};
         if (this.enabled && (e.shiftKey || e.which === this.activateBtn)) {
             this.searchAt(this.lastMousePos);
         }
     }
-    
-    
+
+
     onMouseDown(e) {
         this.lastMousePos = {x: e.clientX, y: e.clientY};
         if (this.enabled && (e.shiftKey || e.which === this.activateBtn)) {
@@ -92,7 +92,7 @@ class Client {
 
         //textSource.setEndOffset(this.options.scanLength);
         textSource.setWordsOffset();
-        
+
         bgFindTerm(textSource.text(), ({definitions, length}) => {
             if (length === 0) {
                 this.hidePopup();
@@ -236,14 +236,21 @@ class Client {
         const position = sourceLocal.setStartOffset(extent);
         sourceLocal.setEndOffset(position + extent);
         const content = sourceLocal.text();
+        // alert(content)
 
         let quoteStack = [];
 
         let startPos = 0;
+        let lastC = '';
         for (let i = position; i >= startPos; --i) {
             const c = content[i];
 
             if (quoteStack.length === 0 && (terminators.indexOf(c) !== -1 || c in quotesFwd)) {
+                startPos = i + 1;
+                break;
+            }
+            const temp = lastC + c;
+            if(temp == '\r'+'\n'||temp == '\r'*2 || temp == '\n'*2){
                 startPos = i + 1;
                 break;
             }
@@ -253,6 +260,7 @@ class Client {
             } else if (c in quotesBwd) {
                 quoteStack = [quotesBwd[c]].concat(quoteStack);
             }
+            lastC = c;
         }
 
         quoteStack = [];
@@ -278,8 +286,10 @@ class Client {
                 quoteStack = [quotesFwd[c]].concat(quoteStack);
             }
         }
-
-        return content.substring(startPos, endPos).trim();
+        let result = content.substring(startPos, endPos).trim()
+        result = result.replace(/[\r\n]/g," ")
+        // alert(result);
+        return result;
     }
 }
 

@@ -44,7 +44,7 @@ class Yomichan {
         this.translator = new Translator();
         this.ankiweb = new Ankiweb();
         this.onlinedict = new Onlinedict();
-        
+
         this.asyncPools = {};
         this.setState('disabled');
         this.ankiConnectVer = 5;
@@ -68,11 +68,11 @@ class Yomichan {
     }
 
     onInstalled(details) {
-        if (details.reason === 'install') {
-            chrome.tabs.create({url: chrome.extension.getURL('bg/guide.html')});
-        } else if (details.reason === 'update') {
-            chrome.tabs.create({url: chrome.extension.getURL('bg/update.html')});
-        }
+        // if (details.reason === 'install') {
+        //     chrome.tabs.create({url: chrome.extension.getURL('bg/guide.html')});
+        // } else if (details.reason === 'update') {
+        //     chrome.tabs.create({url: chrome.extension.getURL('bg/update.html')});
+        // }
     }
 
     onMessage(request, sender, callback) {
@@ -180,7 +180,7 @@ class Yomichan {
             xhr.open('POST', 'http://127.0.0.1:8765');
             xhr.send(JSON.stringify({action, params}));
         } else if (this.options.enableAnkiWeb){
-            this.invokeAnkiweb(action, params, callback);            
+            this.invokeAnkiweb(action, params, callback);
         } else {
             callback(null);
         }
@@ -212,7 +212,7 @@ class Yomichan {
         }
     }
 
-    
+
     formatField(field, definition, g_index, mode) {
         const tags = [
             'audio',
@@ -301,13 +301,53 @@ class Yomichan {
         for (let name in fields) {
             note.fields[name] = this.formatField(fields[name], definition, g_index, mode);
         }
-
         return note;
     }
 
     api_addDefinition({definition, g_index, mode, callback}) {
         const note = this.formatNote(definition, g_index, mode);
-        this.ankiInvokeSafe('addNote', {note}, null, callback);
+        let exist = false;
+        for(let name in note.fields){
+          if(note.fields[name].indexOf("{sentence-translate}") >= 0){
+            exist=true;
+            break;
+          }
+        }
+        if(exist){
+          const sentence = `${definition.sentence.replace(definition.source,"<b>"+definition.source+"</b>")}`;
+
+          this.getGoogleTranslateSentence(sentence, (data) => {
+            // alert(data)
+            for (let name in note.fields) {
+                note.fields[name] = note.fields[name].replace(`{sentence-translate}`, data);
+            }
+            this.ankiInvokeSafe('addNote', {note}, null, callback);
+          })
+        }else{
+          this.ankiInvokeSafe('addNote', {note}, null, callback);
+        }
+
+    }
+    // writeObj(obj){
+    //    var description = "";
+    //    for(var i in obj){
+    //      var property=obj[i];
+    //      description+=i+" = "+property+"\n";
+    //    }
+    //    alert(description);
+    // }
+
+    getGoogleTranslateSentence(sentence,cb){
+      if(!sentence){
+        cb("")
+      }
+      sentence = sentence.replace(/[\r\n]/g," ")
+      sentence = sentence.replace(/<.?b>/g,"")
+      $.get('http://translate.google.com/translate_a/t?client=x&sl=en&tl=zh-CN&text='+encodeURIComponent(sentence),(data, textStatus) => {
+        // alert(data.sentences[0].trans)
+        // this.writeObj(data)
+        cb(data)
+      });
     }
 
     api_canAddDefinitions({definitions, modes, callback}) {
@@ -379,7 +419,7 @@ class Yomichan {
     api_renderText({template, data, callback}) {
         callback(Handlebars.templates[template](data));
     }
-    
+
     connectAnkiweb(callback) {
         this.ankiweb.connect(this.options.ankiwebUsername, this.options.ankiwebPassword, callback);
     }
